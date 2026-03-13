@@ -50,17 +50,50 @@ export function Result({ scores, onRestart }: ResultProps) {
           useCORS: true,
           backgroundColor: "#e0e5ec", // Neumorphic background
         });
-        const url = canvas.toDataURL("image/png");
-        const link = document.createElement("a");
-        link.download = "职业锚测评结果.png";
-        link.href = url;
-        link.click();
+        
+        canvas.toBlob(async (blob) => {
+          if (!blob) {
+            setIsSaving(false);
+            return;
+          }
+
+          const file = new File([blob], "职业锚测评结果.png", { type: "image/png" });
+
+          // Try Web Share API for mobile devices
+          if (navigator.canShare && navigator.canShare({ files: [file] })) {
+            try {
+              await navigator.share({
+                files: [file],
+                title: '我的职业锚测评结果',
+              });
+            } catch (error) {
+              // If user cancels share, do nothing. If other error, fallback to download.
+              if ((error as Error).name !== 'AbortError') {
+                fallbackDownload(blob);
+              }
+            }
+          } else {
+            // Fallback for Desktop / Unsupported browsers
+            fallbackDownload(blob);
+          }
+          setIsSaving(false);
+        }, "image/png");
       } catch (err) {
         console.error("Failed to save image", err);
-      } finally {
         setIsSaving(false);
       }
     }, 100);
+  };
+
+  const fallbackDownload = (blob: Blob) => {
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.download = "职业锚测评结果.png";
+    link.href = url;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
   };
 
   return (
